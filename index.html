@@ -35,7 +35,7 @@
                 <div class="flex items-center gap-2">
                     <i data-lucide="graduation-cap" class="w-8 h-8 text-amber-400"></i>
                     <div>
-                        <h1 class="text-lg md:text-xl font-bold leading-tight">কর্ণ অ্যাবাকাস মাস্টার বিদ্যাপীঠ ও কলেজ</h1>
+                        <h1 class="text-lg md:text-xl font-bold leading-tight">আদর্শ বিদ্যাপীঠ ও কলেজ</h1>
                         <p class="text-xs text-blue-200">ডিজিটাল ম্যানেজমেন্ট সিস্টেম (সম্পূর্ণ সংস্করণ)</p>
                     </div>
                 </div>
@@ -152,4 +152,227 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-1">লিঙ্গ (Gender) *</label>
-                            <select id="studentGender" required class="w-full border rounded-lg px-3 py-
+                            <select id="studentGender" required class="w-full border rounded-lg px-3 py-2">
+                                <option value="ছাত্র">ছাত্র (Male)</option><option value="ছাত্রী">ছাত্রী (Female)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">রক্তের গ্রুপ</label>
+                            <select id="bloodGroup" class="w-full border rounded-lg px-3 py-2">
+                                <option value="">অজানা</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="O+">O+</option><option value="O-">O-</option><option value="AB+">AB+</option><option value="AB-">AB-</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">পিতার নাম *</label>
+                            <input type="text" id="fatherName" required class="w-full border rounded-lg px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">মাতার নাম</label>
+                            <input type="text" id="motherName" class="w-full border rounded-lg px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">অভিভাবকের মোবাইল নম্বর *</label>
+                            <input type="tel" id="guardianPhone" required placeholder="017XXXXXXXX" class="w-full border rounded-lg px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">ঠিকানা</label>
+                            <input type="text" id="address" placeholder="গ্রাম, উপজেলা" class="w-full border rounded-lg px-3 py-2">
+                        </div>
+                        <div class="md:col-span-2 pt-2">
+                            <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg transition">
+                                শিক্ষার্থী প্রোফাইল সেভ করুন
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- 3. STUDENT LIST TAB -->
+            <section id="tab-student-list" class="tab-content hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+                    <h2 class="text-xl font-bold text-slate-800">শিক্ষার্থী তালিকা</h2>
+                    <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                        <input type="text" id="searchInput" onkeyup="renderStudentTable()" placeholder="নাম বা আইডি খুঁজুন..." class="border rounded-lg px-3 py-1.5 text-sm flex-1">
+                        <select id="filterClass" onchange="renderStudentTable()" class="border rounded-lg px-3 py-1.5 text-sm">
+                            <option value="">সকল শ্রেণি</option>
+                            <option value="প্লে">প্লে</option><option value="নার্সারি">নার্সারি</option><option value="প্রথম">প্রথম</option><option value="দ্বিতীয়">দ্বিতীয়</option><option value="তৃতীয়">তৃতীয়</option><option value="চতুর্থ">চতুর্থ</option><option value="পঞ্চম">পঞ্চম</option><option value="ষষ্ঠ">ষষ্ঠ</option><option value="সপ্তম">সপ্তম</option><option value="অষ্টম">অষ্টম</option><option value="নবম">নবম</option><option value="দশম">দশম</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800 text-white text-sm">
+                                <th class="p-3">আইডি</th>
+                                <th class="p-3">নাম</th>
+                                <th class="p-3">শ্রেণি ও রোল</th>
+                                <th class="p-3">পিতার নাম</th>
+                                <th class="p-3">মোবাইল</th>
+                                <th class="p-3 text-center">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody" class="divide-y text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. BULK EXCEL IMPORT TAB -->
+            <section id="tab-bulk-import" class="tab-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-sm max-w-2xl space-y-5">
+                    <div class="border-b pb-3">
+                        <h2 class="text-xl font-bold text-slate-800">এক্সেল ফাইল থেকে দ্রুত ডাটা এন্ট্রি</h2>
+                        <p class="text-xs text-slate-500 mt-1">সঠিক ফরম্যাটে এক্সেল ফাইল আপলোড করে একসাথে বহু শিক্ষার্থী যুক্ত করুন।</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg space-y-2">
+                        <h4 class="font-bold text-blue-900 text-sm">নমুনা Excel ফরম্যাট ডাউনলোড করুন</h4>
+                        <button onclick="downloadSampleExcel()" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold px-3 py-2 rounded">নমুনা টেমপ্লেট ডাউনলোড</button>
+                    </div>
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center space-y-3">
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-slate-500 file:mx-auto file:py-2 file:px-4 file:rounded-lg file:bg-emerald-50 file:text-emerald-700 mx-auto max-w-xs">
+                        <button onclick="handleExcelUpload()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-lg shadow">ডাটা ইম্পোর্ট শুরু করুন</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. MARKS ENTRY & RESULT TAB -->
+            <section id="tab-marks-entry" class="tab-content hidden space-y-5">
+                <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 border-b pb-2">পরীক্ষার নম্বর এন্ট্রি</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select id="examName" class="border rounded-lg px-3 py-2">
+                            <option value="অর্ধবার্ষিক পরীক্ষা ২০২৬">অর্ধবার্ষিক পরীক্ষা ২০২৬</option>
+                            <option value="বার্ষিক পরীক্ষা ২০২৬">বার্ষিক পরীক্ষা ২০২৬</option>
+                        </select>
+                        <select id="marksClass" class="border rounded-lg px-3 py-2">
+                            <option value="">শ্রেণি বাছুন</option>
+                            <option value="প্লে">প্লে</option><option value="নার্সারি">নার্সারি</option><option value="প্রথম">প্রথম</option><option value="দ্বিতীয়">দ্বিতীয়</option><option value="তৃতীয়">তৃতীয়</option><option value="চতুর্থ">চতুর্থ</option><option value="পঞ্চম">পঞ্চম</option><option value="ষষ্ঠ">ষষ্ঠ</option><option value="সপ্তম">সপ্তম</option><option value="অষ্টম">অষ্টম</option><option value="নবম">নবম</option><option value="দশম">দশম</option>
+                        </select>
+                        <button onclick="loadStudentsForMarks()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg">শিক্ষার্থী লোড করুন</button>
+                    </div>
+                </div>
+                <div id="marksEntryContainer" class="bg-white p-6 rounded-xl shadow-sm hidden space-y-4">
+                    <h3 id="marksTableTitle" class="font-bold text-lg text-slate-800"></h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-800 text-white text-sm">
+                                    <th class="p-3">রোল</th>
+                                    <th class="p-3">নাম ও আইডি</th>
+                                    <th class="p-3">বাংলা</th>
+                                    <th class="p-3">ইংরেজি</th>
+                                    <th class="p-3">গণিত</th>
+                                    <th class="p-3">বিজ্ঞান</th>
+                                    <th class="p-3">সমাজ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="marksTableBody" class="divide-y text-sm"></tbody>
+                        </table>
+                    </div>
+                    <button onclick="saveAllMarks()" class="bg-emerald-600 text-white font-bold px-6 py-2.5 rounded-lg">নম্বর সেভ করুন</button>
+                </div>
+            </section>
+
+            <!-- 6. MERIT LIST & TABULATION TAB -->
+            <section id="tab-merit-list" class="tab-content hidden space-y-5">
+                <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 border-b pb-2">মেরিটলিস্ট ও টেবুলেশন শিট</h2>
+                    <div class="flex gap-4 items-end">
+                        <select id="meritClass" class="border rounded-lg px-3 py-2 w-48">
+                            <option value="">শ্রেণি বাছুন</option>
+                            <option value="প্লে">প্লে</option><option value="নার্সারি">নার্সারি</option><option value="প্রথম">প্রথম</option><option value="দ্বিতীয়">দ্বিতীয়</option><option value="তৃতীয়">তৃতীয়</option><option value="চতুর্থ">চতুর্থ</option><option value="পঞ্চম">পঞ্চম</option><option value="ষষ্ঠ">ষষ্ঠ</option><option value="সপ্তম">সপ্তম</option><option value="অষ্টম">অষ্টম</option><option value="নবম">নবম</option><option value="দশম">দশম</option>
+                        </select>
+                        <button onclick="generateMeritList()" class="bg-amber-600 text-white font-bold px-6 py-2 rounded-lg">মেরিটলিস্ট তৈরি</button>
+                    </div>
+                </div>
+                <div id="meritResultArea" class="bg-white p-6 rounded-xl shadow-sm space-y-4 hidden">
+                    <div class="flex justify-between items-center"><h3 id="meritTitle" class="font-bold text-lg"></h3><button onclick="window.print()" class="bg-slate-700 text-white text-xs px-3 py-2 rounded">প্রিন্ট</button></div>
+                    <div id="printArea" class="overflow-x-auto">
+                        <table class="w-full text-left border border-slate-300 text-sm">
+                            <thead><tr class="bg-slate-800 text-white"><th class="p-2 border">মেধাক্রম</th><th class="p-2 border">রোল</th><th class="p-2 border">নাম</th><th class="p-2 border text-center">মোট</th><th class="p-2 border text-center">GPA</th><th class="p-2 border text-center">স্ট্যাটাস</th><th class="p-2 border text-center">অ্যাকশন</th></tr></thead>
+                            <tbody id="meritTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. CARDS GENERATOR TAB -->
+            <section id="tab-cards-generator" class="tab-content hidden space-y-5">
+                <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 border-b pb-2">আইডি ও এডমিট কার্ড জেনারেটর</h2>
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">কার্ডের ধরণ</label>
+                            <select id="cardType" class="border rounded-lg px-3 py-2 w-48"><option value="idcard">আইডি কার্ড</option><option value="admit">এডমিট কার্ড</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">শ্রেণি নির্বাচন</label>
+                            <select id="cardClass" class="border rounded-lg px-3 py-2 w-48">
+                                <option value="">সকল শ্রেণি</option><option value="প্লে">প্লে</option><option value="নার্সারি">নার্সারি</option><option value="প্রথম">প্রথম</option><option value="দ্বিতীয়">দ্বিতীয়</option><option value="তৃতীয়">তৃতীয়</option><option value="চতুর্থ">চতুর্থ</option><option value="পঞ্চম">পঞ্চম</option><option value="ষষ্ঠ">ষষ্ঠ</option><option value="সপ্তম">সপ্তম</option><option value="অষ্টম">অষ্টম</option><option value="নবম">নবম</option><option value="দশম">দশম</option>
+                            </select>
+                        </div>
+                        <button onclick="generateCards()" class="bg-purple-600 text-white font-bold px-6 py-2 rounded-lg">কার্ড জেনারেট করুন</button>
+                    </div>
+                </div>
+                <div id="cardsDisplayArea" class="bg-white p-6 rounded-xl shadow-sm space-y-4 hidden">
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-lg">কার্ড প্রিভিউ</h3><button onclick="window.print()" class="bg-slate-700 text-white text-xs px-3 py-2 rounded">পেজ প্রিন্ট করুন</button></div>
+                    <div id="printArea" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </section>
+
+            <!-- 8. ATTENDANCE MANAGEMENT TAB -->
+            <section id="tab-attendance" class="tab-content hidden space-y-5">
+                <div class="bg-white p-6 rounded-xl shadow-sm space-y-4">
+                    <h2 class="text-xl font-bold text-slate-800 border-b pb-2">দৈনিক উপস্থিতি ম্যানেজমেন্ট</h2>
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div><label class="block text-sm font-medium mb-1">তারিখ</label><input type="date" id="attendanceDate" class="border rounded-lg px-3 py-2"></div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">শ্রেণি নির্বাচন</label>
+                            <select id="attendanceClass" class="border rounded-lg px-3 py-2 w-48">
+                                <option value="">শ্রেণি বাছুন</option><option value="প্লে">প্লে</option><option value="নার্সারি">নার্সারি</option><option value="প্রথম">প্রথম</option><option value="দ্বিতীয়">দ্বিতীয়</option><option value="তৃতীয়">তৃতীয়</option><option value="চতুর্থ">চতুর্থ</option><option value="পঞ্চম">পঞ্চম</option><option value="ষষ্ঠ">ষষ্ঠ</option><option value="সপ্তম">সপ্তম</option><option value="অষ্টম">অষ্টম</option><option value="নবম">নবম</option><option value="দশম">দশম</option>
+                            </select>
+                        </div>
+                        <button onclick="loadAttendanceSheet()" class="bg-emerald-600 text-white font-bold px-6 py-2 rounded-lg">হাজিরা শিট লোড করুন</button>
+                    </div>
+                </div>
+                <div id="attendanceContainer" class="bg-white p-6 rounded-xl shadow-sm hidden space-y-4">
+                    <div class="flex justify-between items-center"><h3 id="attendanceTitle" class="font-bold text-lg"></h3><div class="space-x-2"><button onclick="markAllAttendance(true)" class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-bold">সবাই উপস্থিত</button><button onclick="markAllAttendance(false)" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold">সবাই অনুপস্থিত</button></div></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left border-collapse"><thead><tr class="bg-slate-800 text-white text-sm"><th class="p-3">রোল</th><th class="p-3">নাম ও আইডি</th><th class="p-3 text-center">উপস্থিতি</th></tr></thead><tbody id="attendanceTableBody" class="divide-y text-sm"></tbody></table></div>
+                    <button onclick="saveAttendance()" class="bg-emerald-600 text-white font-bold px-6 py-2.5 rounded-lg">উপস্থিতি সেভ করুন</button>
+                </div>
+            </section>
+
+            <!-- 9. GUARDIAN PORTAL TAB -->
+            <section id="tab-guardian-login" class="tab-content hidden space-y-5">
+                <div class="bg-white p-8 rounded-xl shadow-sm max-w-md mx-auto space-y-5">
+                    <div class="text-center space-y-1"><i data-lucide="shield-check" class="w-12 h-12 text-blue-700 mx-auto"></i><h2 class="text-2xl font-bold">অভিভাবক পোর্টাল</h2><p class="text-xs text-slate-500">আইডি ও মোবাইল নম্বর দিয়ে লগইন করুন</p></div>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium mb-1">শিক্ষার্থীর আইডি</label><input type="text" id="gLoginId" placeholder="যেমন: 2026001" class="w-full border rounded-lg px-3 py-2"></div>
+                        <div><label class="block text-sm font-medium mb-1">মোবাইল নম্বর</label><input type="tel" id="gLoginPhone" placeholder="017XXXXXXXX" class="w-full border rounded-lg px-3 py-2"></div>
+                        <button onclick="guardianLogin()" class="w-full bg-blue-700 text-white font-bold py-2.5 rounded-xl">লগইন</button>
+                    </div>
+                </div>
+                <div id="guardianDashboard" class="space-y-5 hidden">
+                    <div class="bg-blue-900 text-white p-6 rounded-2xl flex justify-between items-center"><div><h3 id="gStudentName" class="text-xl font-bold"></h3><p id="gStudentDetails" class="text-xs text-blue-200 mt-1"></p></div><button onclick="logoutGuardian()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-xs">লগআউট</button></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600"><p class="text-xs text-slate-500 uppercase">মোট উপস্থিতি</p><h4 id="gTotalPresent" class="text-2xl font-bold text-emerald-700 mt-1">০ দিন</h4></div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-600"><p class="text-xs text-slate-500 uppercase">সর্বশেষ পরীক্ষা জিপিএ</p><h4 id="gLatestGPA" class="text-2xl font-bold text-blue-700 mt-1">-</h4></div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500"><p class="text-xs text-slate-500 uppercase">বকেয়া ফি</p><h4 class="text-2xl font-bold text-amber-600 mt-1">৳ ০.০০</h4></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MARKSHET MODAL -->
+    <div id="markSheetModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeMarksheet()" class="absolute top-4 right-4 text-slate-400 font-bold">✕</button>
+            <div id="marksheetContent" class="space-y-4"></div>
+            <button onclick="window.print()" class="w-full bg-blue-700 text-white font-bold py-2.5 rounded-xl">মার্কশীট প্রিন্ট করুন</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
