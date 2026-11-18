@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduManage BD - শিক্ষা প্রতিষ্ঠান ম্যানেজমেন্ট সফটওয়্যার</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Hind Siliguri -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS for Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; }
+        .tab-active { background-color: #1e40af; color: white; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <!-- Top Navbar (Mobile & Desktop) -->
+    <header class="bg-blue-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button id="menuToggle" class="md:hidden p-1 rounded hover:bg-blue-800">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="graduation-cap" class="w-8 h-8 text-amber-400"></i>
+                    <div>
+                        <h1 class="text-lg md:text-xl font-bold leading-tight">আদর্শ বিদ্যাপীঠ ও কলেজ</h1>
+                        <p class="text-xs text-blue-200">ডিজিটাল ম্যানেজমেন্ট সিস্টেম (ধাপ-১)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="storageBadge" class="text-xs bg-amber-500 text-slate-900 font-semibold px-2.5 py-1 rounded-full">
+                    লোকাল মোড চালু
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="hidden md:block w-full md:w-64 bg-white shadow-md p-4 space-y-2">
+            <p class="text-xs font-semibold text-slate-400 uppercase px-3 mb-2">প্রধান মেনু</p>
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-btn tab-active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left font-medium transition">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> ড্যাশবোর্ড
+            </button>
+            <button onclick="switchTab('add-student')" id="btn-add-student" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left font-medium text-slate-700 hover:bg-slate-100 transition">
+                <i data-lucide="user-plus" class="w-5 h-5"></i> নতুন শিক্ষার্থী ভর্তি
+            </button>
+            <button onclick="switchTab('student-list')" id="btn-student-list" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left font-medium text-slate-700 hover:bg-slate-100 transition">
+                <i data-lucide="users" class="w-5 h-5"></i> শিক্ষার্থী তালিকা
+            </button>
+            <button onclick="switchTab('bulk-import')" id="btn-bulk-import" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left font-medium text-slate-700 hover:bg-slate-100 transition">
+                <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-600"></i> দ্রুত Excel ডাটা এন্ট্রি
+            </button>
+            
+            <div class="pt-4 border-t mt-4">
+                <p class="text-xs font-semibold text-slate-400 uppercase px-3 mb-2">পরবর্তী ধাপসমূহ</p>
+                <div class="px-3 py-2 text-xs text-slate-500 space-y-1">
+                    <p>• ধাপ-২: রেজাল্ট, মেরিটলিস্ট ও কার্ড</p>
+                    <p>• ধাপ-৩: এটেন্ডেন্স ও অভিভাবক প্যানেল</p>
+                    <p>• ধাপ-৪: ফি, একাউন্টস ও পেমেন্ট</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-6">
+            
+            <!-- 1. DASHBOARD TAB -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                <h2 class="text-2xl font-bold text-slate-800">প্রতিষ্ঠানের সারসংক্ষেপ</h2>
+                
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-600">
+                        <p class="text-sm text-slate-500">মোট শিক্ষার্থী</p>
+                        <h3 id="stat-total" class="text-3xl font-bold text-slate-800 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600">
+                        <p class="text-sm text-slate-500">ছাত্র (Male)</p>
+                        <h3 id="stat-male" class="text-3xl font-bold text-emerald-700 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-pink-600">
+                        <p class="text-sm text-slate-500">ছাত্রী (Female)</p>
+                        <h3 id="stat-female" class="text-3xl font-bold text-pink-700 mt-1">0</h3>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-amber-500">
+                        <p class="text-sm text-slate-500">সক্রিয় শ্রেণি সংখ্যা</p>
+                        <h3 id="stat-classes" class="text-3xl font-bold text-amber-600 mt-1">0</h3>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">দ্রুত কার্যক্রম</h3>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="switchTab('add-student')" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> একক শিক্ষার্থী যুক্ত করুন
+                        </button>
+                        <button onclick="switchTab('bulk-import')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium">
+                            <i data-lucide="upload" class="w-5 h-5"></i> Excel ফাইল থেকে বাল্ক আপলোড
+                        </button>
+                        <button onclick="exportToExcel()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium">
+                            <i data-lucide="download" class="w-5 h-5"></i> ব্যাকআপ Excel ডাউনলোড
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. ADD STUDENT TAB -->
+            <section id="tab-add-student" class="tab-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-sm max-w-3xl">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2">নতুন শিক্ষার্থী প্রোফাইল তৈরি</h2>
+                    <form id="studentForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">শিক্ষার্থীর আইডি (Student ID) *</label>
+                            <input type="text" id="studentId" required placeholder="যেমন: 2026001" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">শিক্ষার্থীর পূর্ণ নাম *</label>
+                            <input type="text" id="studentName" required placeholder="বাংলা বা ইংরেজিতে নাম" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">শ্রেণি (Class) *</label>
+                            <select id="studentClass" required class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                                <option value="">নির্বাচন করুন</option>
+                                <option value="প্লে">প্লে</option>
+                                <option value="নার্সারি">নার্সারি</option>
+                                <option value="প্রথম">প্রথম</option>
+                                <option value="দ্বিতীয়">দ্বিতীয়</option>
+                                <option value="তৃতীয়">তৃতীয়</option>
+                                <option value="চতুর্থ">চতুর্থ</option>
+                                <option value="পঞ্চম">পঞ্চম</option>
+                                <option value="ষষ্ঠ">ষষ্ঠ</option>
+                                <option value="সপ্তম">সপ্তম</option>
+                                <option value="অষ্টম">অষ্টম</option>
+                                <option value="নবম">নবম</option>
+                                <option value="দশম">দশম</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">রোল নম্বর *</label>
+                            <input type="number" id="studentRoll" required placeholder="যেমন: 1" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">লিঙ্গ (Gender) *</label>
+                            <select id="studentGender" required class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                                <option value="ছাত্র">ছাত্র (Male)</option>
+                                <option value="ছাত্রী">ছাত্রী (Female)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">রক্তের গ্রুপ</label>
+                            <select id="bloodGroup" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                                <option value="">অজানা</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">পিতার নাম *</label>
+                            <input type="text" id="fatherName" required class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">মাতার নাম</label>
+                            <input type="text" id="motherName" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">অভিভাবকের মোবাইল নম্বর *</label>
+                            <input type="tel" id="guardianPhone" required placeholder="017XXXXXXXX" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">ঠিকানা</label>
+                            <input type="text" id="address" placeholder="গ্রাম/মহল্লা, উপজেলা" class="w-full border rounded-lg px-3 py-2 focus:outline-blue-600">
+                        </div>
+                        <div class="md:col-span-2 pt-2">
+                            <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2.5 rounded-lg transition">
+                                শিক্ষার্থী প্রোফাইল সেভ করুন
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- 3. STUDENT LIST TAB -->
+            <section id="tab-student-list" class="tab-content hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-center gap-3">
+                    <h2 class="text-xl font-bold text-slate-800">শিক্ষার্থী তালিকা ও প্রোফাইল</h2>
+                    <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                        <input type="text" id="searchInput" onkeyup="renderStudentTable()" placeholder="নাম, আইডি বা মোবাইল খুঁজুন..." class="border rounded-lg px-3 py-1.5 text-sm flex-1">
+                        <select id="filterClass" onchange="renderStudentTable()" class="border rounded-lg px-3 py-1.5 text-sm">
+                            <option value="">সকল শ্রেণি</option>
+                            <option value="প্লে">প্লে</option>
+                            <option value="নার্সারি">নার্সারি</option>
+                            <option value="প্রথম">প্রথম</option>
+                            <option value="দ্বিতীয়">দ্বিতীয়</option>
+                            <option value="তৃতীয়">তৃতীয়</option>
+                            <option value="চতুর্থ">চতুর্থ</option>
+                            <option value="পঞ্চম">পঞ্চম</option>
+                            <option value="ষষ্ঠ">ষষ্ঠ</option>
+                            <option value="সপ্তম">সপ্তম</option>
+                            <option value="অষ্টম">অষ্টম</option>
+                            <option value="নবম">নবম</option>
+                            <option value="দশম">দশম</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-800 text-white text-sm">
+                                <th class="p-3">আইডি</th>
+                                <th class="p-3">নাম</th>
+                                <th class="p-3">শ্রেণি ও রোল</th>
+                                <th class="p-3">পিতার নাম</th>
+                                <th class="p-3">মোবাইল</th>
+                                <th class="p-3">রক্ত</th>
+                                <th class="p-3 text-center">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody" class="divide-y text-sm">
+                            <!-- Data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. BULK EXCEL IMPORT TAB -->
+            <section id="tab-bulk-import" class="tab-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-sm max-w-2xl space-y-5">
+                    <div class="border-b pb-3">
+                        <h2 class="text-xl font-bold text-slate-800">দ্রুততম পদ্ধতিতে এক্সিস্টিং ডাটা এন্ট্রি (Excel/CSV)</h2>
+                        <p class="text-sm text-slate-500 mt-1">আপনার কম্পিউটারে থাকা পুরনো এক্সেল ফাইল থেকে এক ক্লিকেই শত শত শিক্ষার্থীর ডাটা সফটওয়্যারে যুক্ত করুন।</p>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg space-y-2">
+                        <h4 class="font-bold text-blue-900 text-sm">ধাপ ১: নমুনা Excel ফরম্যাট ডাউনলোড করুন</h4>
+                        <p class="text-xs text-blue-800">সঠিক কলাম অনুযায়ী ডাটা সাজাতে নিচের বাটন থেকে নমুনা ফাইলটি ডাউনলোড করে আপনার ডাটা পেস্ট করুন।</p>
+                        <button onclick="downloadSampleExcel()" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold px-3 py-2 rounded flex items-center gap-1.5">
+                            <i data-lucide="file-down" class="w-4 h-4"></i> নমুনা Excel টেমপ্লেট ডাউনলোড
+                        </button>
+                    </div>
+
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center space-y-3">
+                        <i data-lucide="upload-cloud" class="w-12 h-12 text-emerald-600 mx-auto"></i>
+                        <h4 class="font-bold text-slate-700">ধাপ ২: পূরণকৃত Excel (.xlsx / .csv) ফাইল আপলোড করুন</h4>
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mx-auto max-w-xs">
+                        <button onclick="handleExcelUpload()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-lg transition">
+                            ডাটা ইম্পোর্ট শুরু করুন
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
