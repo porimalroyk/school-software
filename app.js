@@ -55,7 +55,7 @@ document.getElementById('studentForm').addEventListener('submit', function(e) {
     const newId = document.getElementById('studentId').value.trim();
 
     if (students.some(s => s.id === newId)) {
-        alert('এই আইডি নম্বরটি ইতিমধ্যে ব্যবহৃত হয়েছে!');
+        alert('এই আইডি নম্বরটি ইতিমধ্যে ব্যবহৃত হয়েছে!');
         return;
     }
 
@@ -74,24 +74,29 @@ document.getElementById('studentForm').addEventListener('submit', function(e) {
 
     saveStudents(students);
     this.reset();
-    alert('শিক্ষার্থীর প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!');
+    alert('শিক্ষার্থীর প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!');
     switchTab('student-list');
 });
 
 // Render Student Table
 function renderStudentTable() {
     const students = getStudents();
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const classFilter = document.getElementById('filterClass').value;
+    const searchInput = document.getElementById('searchInput');
+    const classFilter = document.getElementById('filterClass');
     const tbody = document.getElementById('studentTableBody');
+
+    if (!tbody) return;
+
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    const classVal = classFilter ? classFilter.value : '';
 
     const filtered = students.filter(s => {
         return (s.name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search) || s.phone.includes(search)) && 
-               (classFilter === '' || s.class === classFilter);
+               (classVal === '' || s.class === classVal);
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`;
         return;
     }
 
@@ -121,10 +126,15 @@ function deleteStudent(id) {
 
 function updateDashboardStats() {
     const students = getStudents();
-    document.getElementById('stat-total').innerText = students.length;
-    document.getElementById('stat-male').innerText = students.filter(s => s.gender === 'ছাত্র').length;
-    document.getElementById('stat-female').innerText = students.filter(s => s.gender === 'ছাত্রী').length;
-    document.getElementById('stat-classes').innerText = new Set(students.map(s => s.class)).size;
+    const statTotal = document.getElementById('stat-total');
+    const statMale = document.getElementById('stat-male');
+    const statFemale = document.getElementById('stat-female');
+    const statClasses = document.getElementById('stat-classes');
+
+    if (statTotal) statTotal.innerText = students.length;
+    if (statMale) statMale.innerText = students.filter(s => s.gender === 'ছাত্র').length;
+    if (statFemale) statFemale.innerText = students.filter(s => s.gender === 'ছাত্রী').length;
+    if (statClasses) statClasses.innerText = new Set(students.map(s => s.class)).size;
 }
 
 // ================= EXAM & MARKS SYSTEM =================
@@ -186,7 +196,7 @@ function saveAllMarks() {
     });
 
     saveMarks(allMarks);
-    alert('সকল শিক্ষার্থীর পরীক্ষার নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+    alert('সকল শিক্ষার্থীর পরীক্ষার নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
 }
 
 // ================= MERIT LIST & GPA CALCULATION =================
@@ -230,7 +240,6 @@ function generateMeritList() {
         };
     });
 
-    // Sort by Total Marks Descending
     reportList.sort((a, b) => b.totalMarks - a.totalMarks);
 
     if (reportList.length === 0) {
@@ -273,7 +282,7 @@ function viewMarksheet(studentId) {
     content.innerHTML = `
         <div class="text-center border-b pb-3 space-y-1">
             <h2 class="text-xl font-bold text-blue-900">আদর্শ বিদ্যাপীঠ ও কলেজ</h2>
-            <p class="text-xs text-slate-500">দেবীগঞ্জ, পঞ্চগড়</p>
+            <p class="text-xs text-slate-500">দেবীগঞ্জ, পঞ্চগড়</p>
             <h3 class="font-bold text-md text-slate-800 pt-2">${exam} - একাডেমিক ট্রান্সক্রিপ্ট</h3>
         </div>
         <div class="grid grid-cols-2 text-sm bg-slate-50 p-3 rounded-lg gap-2">
@@ -287,7 +296,7 @@ function viewMarksheet(studentId) {
         <table class="w-full text-left border-collapse border border-slate-300 text-sm">
             <thead>
                 <tr class="bg-slate-800 text-white">
-                    <th class="p-2 border">বিষয়</th>
+                    <th class="p-2 border">বিষয়</th>
                     <th class="p-2 border text-center">পূর্ণমান</th>
                     <th class="p-2 border text-center">প্রাপ্ত নম্বর</th>
                     <th class="p-2 border text-center">গ্রেড</th>
@@ -298,7 +307,7 @@ function viewMarksheet(studentId) {
                 <tr><td class="p-2 border">ইংরেজি</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.english}</td><td class="p-2 border text-center">${calculateGPA(m.english, 1).grade}</td></tr>
                 <tr><td class="p-2 border">গণিত</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.math}</td><td class="p-2 border text-center">${calculateGPA(m.math, 1).grade}</td></tr>
                 <tr><td class="p-2 border">বিজ্ঞান</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.science}</td><td class="p-2 border text-center">${calculateGPA(m.science, 1).grade}</td></tr>
-                <tr><td class="p-2 border">সমাজ ও বিশ্বপরিচয়</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.social}</td><td class="p-2 border text-center">${calculateGPA(m.social, 1).grade}</td></tr>
+                <tr><td class="p-2 border">সমাজ ও বিশ্বপরিচয়</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.social}</td><td class="p-2 border text-center">${calculateGPA(m.social, 1).grade}</td></tr>
             </tbody>
         </table>
         <div class="flex justify-between items-center bg-blue-50 p-3 rounded-lg font-bold">
@@ -324,7 +333,7 @@ function generateCards() {
     const container = document.getElementById('printArea');
 
     if (students.length === 0) {
-        alert('কোনো শিক্ষার্থী পাওয়া যায়নি।');
+        alert('কোনো শিক্ষার্থী পাওয়া যায়নি।');
         area.classList.add('hidden');
         return;
     }
@@ -386,10 +395,8 @@ function generateCards() {
     }).join('');
 }
 
-// Initial Call
-updateDashboardStats();
-renderStudentTable();
-// Download Sample Excel Template
+// ================= EXCEL DOWNLOAD & UPLOAD FIX =================
+
 function downloadSampleExcel() {
     const sampleData = [
         {
@@ -402,11 +409,11 @@ function downloadSampleExcel() {
             FatherName: "মোঃ আব্দুল করিম",
             MotherName: "রহিমা বেগম",
             Phone: "01711000000",
-            Address: "দেবীগঞ্জ, পঞ্চগড়"
+            Address: "দেবীগঞ্জ, পঞ্চগড়"
         },
         {
             ID: "2026002",
-            Name: "সুমাইয়া আক্তার",
+            Name: "সুমাইয়া আক্তার",
             Class: "ষষ্ঠ",
             Roll: 2,
             Gender: "ছাত্রী",
@@ -423,3 +430,65 @@ function downloadSampleExcel() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
     XLSX.writeFile(workbook, "Student_Import_Sample.xlsx");
 }
+
+function handleExcelUpload() {
+    const fileInput = document.getElementById('excelFileInput');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('অনুগ্রহ করে প্রথমে একটি Excel (.xlsx বা .csv) ফাইল নির্বাচন করুন।');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+            if (rows.length === 0) {
+                alert('এক্সেল ফাইলটি খালি বা সঠিক ফরম্যাটে নেই!');
+                return;
+            }
+
+            const existingStudents = getStudents();
+            let addedCount = 0;
+
+            rows.forEach(row => {
+                const id = String(row.ID || row.id || row.Id || '').trim();
+                const name = String(row.Name || row.name || row.StudentName || '').trim();
+                
+                if (id && !existingStudents.some(s => s.id === id)) {
+                    existingStudents.push({
+                        id: id,
+                        name: name,
+                        class: String(row.Class || row.class || ''),
+                        roll: row.Roll || row.roll || '',
+                        gender: String(row.Gender || row.gender || 'ছাত্র'),
+                        bloodGroup: String(row.BloodGroup || row.bloodGroup || ''),
+                        fatherName: String(row.FatherName || row.fatherName || ''),
+                        motherName: String(row.MotherName || row.motherName || ''),
+                        phone: String(row.Phone || row.phone || ''),
+                        address: String(row.Address || row.address || '')
+                    });
+                    addedCount++;
+                }
+            });
+
+            saveStudents(existingStudents);
+            fileInput.value = '';
+            alert(`সফলভাবে ${addedCount} জন নতুন শিক্ষার্থীর তথ্য ইম্পোর্ট করা হয়েছে!`);
+            switchTab('student-list');
+        } catch (error) {
+            console.error(error);
+            alert('এক্সেল ফাইল পড়তে সমস্যা হয়েছে। দয়া করে সঠিক ফরম্যাটের ফাইল আপলোড করুন।');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Initial Call
+updateDashboardStats();
+renderStudentTable();
