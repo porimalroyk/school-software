@@ -8,6 +8,7 @@ document.getElementById('menuToggle').addEventListener('click', () => {
 
 const DB_KEY = 'edumanage_students_v1';
 const MARKS_KEY = 'edumanage_marks_v1';
+const ATTENDANCE_KEY = 'edumanage_attendance_v1';
 
 function getStudents() {
     const data = localStorage.getItem(DB_KEY);
@@ -27,6 +28,15 @@ function getMarks() {
 
 function saveMarks(marks) {
     localStorage.setItem(MARKS_KEY, JSON.stringify(marks));
+}
+
+function getAttendance() {
+    const data = localStorage.getItem(ATTENDANCE_KEY);
+    return data ? JSON.parse(data) : {};
+}
+
+function saveAttendanceData(att) {
+    localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(att));
 }
 
 // Tab Switching
@@ -96,7 +106,7 @@ function renderStudentTable() {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি।</td></tr>`;
         return;
     }
 
@@ -107,11 +117,8 @@ function renderStudentTable() {
             <td class="p-3">${s.class} (রোল: ${s.roll})</td>
             <td class="p-3">${s.fatherName}</td>
             <td class="p-3">${s.phone}</td>
-            <td class="p-3"><span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-bold">${s.bloodGroup || '-'}</span></td>
             <td class="p-3 text-center">
-                <button onclick="deleteStudent('${s.id}')" class="text-red-600 hover:bg-red-50 p-1.5 rounded" title="ডিলিট">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
+                <button onclick="deleteStudent('${s.id}')" class="text-red-600 hover:bg-red-50 p-1.5 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </td>
         </tr>
     `).join('');
@@ -127,17 +134,109 @@ function deleteStudent(id) {
 function updateDashboardStats() {
     const students = getStudents();
     const statTotal = document.getElementById('stat-total');
-    const statMale = document.getElementById('stat-male');
     const statFemale = document.getElementById('stat-female');
     const statClasses = document.getElementById('stat-classes');
 
     if (statTotal) statTotal.innerText = students.length;
-    if (statMale) statMale.innerText = students.filter(s => s.gender === 'ছাত্র').length;
     if (statFemale) statFemale.innerText = students.filter(s => s.gender === 'ছাত্রী').length;
     if (statClasses) statClasses.innerText = new Set(students.map(s => s.class)).size;
+
+    const today = new Date().toISOString().split('T')[0];
+    const att = getAttendance();
+    let presentCount = 0;
+    if (att[today]) {
+        presentCount = Object.values(att[today]).filter(status => status === 'Present').length;
+    }
+    const statPresent = document.getElementById('stat-present');
+    if (statPresent) statPresent.innerText = presentCount;
 }
 
-// ================= EXAM & MARKS SYSTEM =================
+// ================= EXCEL DOWNLOAD & ROBUST IMPORT =================
+
+function downloadSampleExcel() {
+    const sampleData = [
+        { ID: "2026001", Name: "তানভীর আহমেদ", Class: "প্রথম", Roll: 1, Gender: "ছাত্র", BloodGroup: "O+", FatherName: "মোঃ আব্দুল করিম", MotherName: "রহিমা বেগম", Phone: "01711000000", Address: "দেবীগঞ্জ, পঞ্চগড়" },
+        { ID: "2026002", Name: "সুমাইয়া আক্তার", Class: "প্রথম", Roll: 2, Gender: "ছাত্রী", BloodGroup: "A+", FatherName: "মোঃ রফিকুল ইসলাম", MotherName: "সালমা খাতুন", Phone: "01811000000", Address: "কালীগঞ্জ বাজার" }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+    XLSX.writeFile(workbook, "Student_Import_Sample.xlsx");
+}
+
+function handleExcelUpload() {
+    const fileInput = document.getElementById('excelFileInput');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert('অনুগ্রহ করে প্রথমে একটি Excel ফাইল সিলেক্ট করুন।');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet);
+
+            if (!rows || rows.length === 0) {
+                alert('এক্সেল ফাইলটি খালি বা সঠিক ফরম্যাটে নেই!');
+                return;
+            }
+
+            const existingStudents = getStudents();
+            let addedCount = 0;
+
+            rows.forEach(row => {
+                // নমনীয় ফিল্ড ম্যাপিং যাতে বড়/ছোট হাতের বা ভিন্ন নামের কলাম হলেও ডাটা ধরে নেয়
+                const id = String(row.ID || row.id || row.Id || row.student_id || '').trim();
+                const name = String(row.Name || row.name || row.StudentName || '').trim();
+                const className = String(row.Class || row.class || '').trim();
+                const roll = row.Roll || row.roll || '';
+
+                if (id && name && className && !existingStudents.some(s => s.id === id)) {
+                    existingStudents.push({
+                        id: id,
+                        name: name,
+                        class: className,
+                        roll: roll,
+                        gender: String(row.Gender || row.gender || 'ছাত্র').trim(),
+                        bloodGroup: String(row.BloodGroup || row.bloodGroup || '').trim(),
+                        fatherName: String(row.FatherName || row.fatherName || '').trim(),
+                        motherName: String(row.MotherName || row.motherName || '').trim(),
+                        phone: String(row.Phone || row.phone || '').trim(),
+                        address: String(row.Address || row.address || '').trim()
+                    });
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                saveStudents(existingStudents);
+                fileInput.value = '';
+                alert(`সফলভাবে ${addedCount} জন নতুন শিক্ষার্থীর তথ্য ইম্পোর্ট করা হয়েছে!`);
+                switchTab('student-list');
+            } else {
+                alert('নতুন কোনো ডাটা পাওয়া যায়নি অথবা এই আইডিগুলোর তথ্য ইতিমধ্যে ডেটাবেসে রয়েছে।');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('ফাইল প্রসেসিং করতে সমস্যা হয়েছে। দয়া করে সঠিক এক্সেল (.xlsx) ফাইল আপলোড করুন।');
+        }
+    };
+
+    reader.onerror = function() {
+        alert('ফাইল পড়তে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// ================= EXAM & MARKS =================
 
 function loadStudentsForMarks() {
     const className = document.getElementById('marksClass').value;
@@ -145,35 +244,27 @@ function loadStudentsForMarks() {
     const container = document.getElementById('marksEntryContainer');
     const tbody = document.getElementById('marksTableBody');
 
-    if (!className) {
-        alert('অনুগ্রহ করে প্রথমে শ্রেণি নির্বাচন করুন।');
-        container.classList.add('hidden');
-        return;
-    }
+    if (!className) { alert('শ্রেণি নির্বাচন করুন।'); container.classList.add('hidden'); return; }
 
     const students = getStudents().filter(s => s.class === className).sort((a, b) => Number(a.roll) - Number(b.roll));
     const allMarks = getMarks();
 
-    if (students.length === 0) {
-        alert('এই শ্রেণিতে কোনো শিক্ষার্থী নেই।');
-        container.classList.add('hidden');
-        return;
-    }
+    if (students.length === 0) { alert('এই শ্রেণিতে শিক্ষার্থী নেই।'); container.classList.add('hidden'); return; }
 
     document.getElementById('marksTableTitle').innerText = `${exam} - শ্রেণি: ${className}`;
     container.classList.remove('hidden');
 
     tbody.innerHTML = students.map(s => {
-        const studentMarks = allMarks[s.id]?.[exam] || { bangla: '', english: '', math: '', science: '', social: '' };
+        const m = allMarks[s.id]?.[exam] || { bangla: '', english: '', math: '', science: '', social: '' };
         return `
             <tr>
                 <td class="p-3 font-bold">${s.roll}</td>
                 <td class="p-3">${s.name} <span class="text-xs text-slate-400 block">ID: ${s.id}</span></td>
-                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="bangla" value="${studentMarks.bangla}" class="mark-input w-20 border rounded p-1 text-center" placeholder="0-100"></td>
-                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="english" value="${studentMarks.english}" class="mark-input w-20 border rounded p-1 text-center" placeholder="0-100"></td>
-                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="math" value="${studentMarks.math}" class="mark-input w-20 border rounded p-1 text-center" placeholder="0-100"></td>
-                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="science" value="${studentMarks.science}" class="mark-input w-20 border rounded p-1 text-center" placeholder="0-100"></td>
-                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="social" value="${studentMarks.social}" class="mark-input w-20 border rounded p-1 text-center" placeholder="0-100"></td>
+                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="bangla" value="${m.bangla}" class="mark-input w-20 border rounded p-1 text-center"></td>
+                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="english" value="${m.english}" class="mark-input w-20 border rounded p-1 text-center"></td>
+                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="math" value="${m.math}" class="mark-input w-20 border rounded p-1 text-center"></td>
+                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="science" value="${m.science}" class="mark-input w-20 border rounded p-1 text-center"></td>
+                <td class="p-3"><input type="number" data-id="${s.id}" data-sub="social" value="${m.social}" class="mark-input w-20 border rounded p-1 text-center"></td>
             </tr>
         `;
     }).join('');
@@ -182,27 +273,20 @@ function loadStudentsForMarks() {
 function saveAllMarks() {
     const exam = document.getElementById('examName').value;
     const allMarks = getMarks();
-    const inputs = document.querySelectorAll('.mark-input');
-
-    inputs.forEach(input => {
+    document.querySelectorAll('.mark-input').forEach(input => {
         const id = input.getAttribute('data-id');
         const sub = input.getAttribute('data-sub');
         const val = input.value === '' ? '' : Number(input.value);
-
         if (!allMarks[id]) allMarks[id] = {};
-        if (!allMarks[id][exam]) allMarks[id][exam] = { bangla: '', english: '', math: '', science: '', social: '' };
-
+        if (!allMarks[id][exam]) allMarks[id][exam] = {};
         allMarks[id][exam][sub] = val;
     });
-
     saveMarks(allMarks);
-    alert('সকল শিক্ষার্থীর পরীক্ষার নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
+    alert('নম্বর সফলভাবে সংরক্ষিত হয়েছে!');
 }
 
-// ================= MERIT LIST & GPA CALCULATION =================
-
-function calculateGPA(totalMarks, subjectsCount = 5) {
-    const avg = totalMarks / subjectsCount;
+function calculateGPA(totalMarks) {
+    const avg = totalMarks / 5;
     if (avg >= 80) return { gpa: '5.00', grade: 'A+' };
     if (avg >= 70) return { gpa: '4.00', grade: 'A' };
     if (avg >= 60) return { gpa: '3.50', grade: 'A-' };
@@ -214,126 +298,81 @@ function calculateGPA(totalMarks, subjectsCount = 5) {
 
 function generateMeritList() {
     const className = document.getElementById('meritClass').value;
-    const exam = document.getElementById('examName').value || 'অর্ধবার্ষিক পরীক্ষা ২০২৬';
+    const exam = document.getElementById('examName').value;
     const students = getStudents().filter(s => s.class === className);
     const allMarks = getMarks();
     const area = document.getElementById('meritResultArea');
     const tbody = document.getElementById('meritTableBody');
 
-    if (!className) {
-        alert('শ্রেণি নির্বাচন করুন।');
-        return;
-    }
+    if (!className) { alert('শ্রেণি নির্বাচন করুন।'); return; }
 
     let reportList = students.map(s => {
         const m = allMarks[s.id]?.[exam] || { bangla: 0, english: 0, math: 0, science: 0, social: 0 };
-        const total = (Number(m.bangla) || 0) + (Number(m.english) || 0) + (Number(m.math) || 0) + (Number(m.science) || 0) + (Number(m.social) || 0);
+        const total = (Number(m.bangla)||0) + (Number(m.english)||0) + (Number(m.math)||0) + (Number(m.science)||0) + (Number(m.social)||0);
         const { gpa, grade } = calculateGPA(total);
-        const isFailed = (Number(m.bangla) < 33 || Number(m.english) < 33 || Number(m.math) < 33 || Number(m.science) < 33 || Number(m.social) < 33);
-
-        return {
-            ...s,
-            totalMarks: total,
-            gpa: isFailed ? '0.00' : gpa,
-            grade: isFailed ? 'F' : grade,
-            status: isFailed ? 'অকৃতকার্য (Fail)' : 'কৃতকার্য (Pass)'
-        };
+        const isFailed = (Number(m.bangla)<33 || Number(m.english)<33 || Number(m.math)<33 || Number(m.science)<33 || Number(m.social)<33);
+        return { ...s, totalMarks: total, gpa: isFailed ? '0.00' : gpa, grade: isFailed ? 'F' : grade, status: isFailed ? 'Fail' : 'Pass' };
     });
 
     reportList.sort((a, b) => b.totalMarks - a.totalMarks);
-
-    if (reportList.length === 0) {
-        alert('এই শ্রেণিতে কোনো শিক্ষার্থী নেই।');
-        area.classList.add('hidden');
-        return;
-    }
-
-    document.getElementById('meritTitle').innerText = `${exam} - শ্রেণি: ${className} (মেরিটলিস্ট)`;
     area.classList.remove('hidden');
+    document.getElementById('meritTitle').innerText = `${exam} - ${className}`;
 
-    tbody.innerHTML = reportList.map((s, index) => `
-        <tr class="border-b hover:bg-slate-50">
-            <td class="p-2.5 border font-bold text-center text-blue-700">#${index + 1}</td>
+    tbody.innerHTML = reportList.map((s, idx) => `
+        <tr class="border-b">
+            <td class="p-2.5 border font-bold text-center">#${idx + 1}</td>
             <td class="p-2.5 border text-center">${s.roll}</td>
-            <td class="p-2.5 border font-medium">${s.name} <span class="text-xs text-slate-400 block">ID: ${s.id}</span></td>
+            <td class="p-2.5 border">${s.name} <span class="text-xs text-slate-400">ID: ${s.id}</span></td>
             <td class="p-2.5 border text-center font-bold">${s.totalMarks}</td>
             <td class="p-2.5 border text-center">${s.gpa} (${s.grade})</td>
-            <td class="p-2.5 border text-center font-semibold ${s.grade === 'F' ? 'text-red-600' : 'text-emerald-600'}">${s.status}</td>
-            <td class="p-2.5 border text-center">
-                <button onclick="viewMarksheet('${s.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1 rounded">মার্কশীট</button>
-            </td>
+            <td class="p-2.5 border text-center ${s.grade === 'F' ? 'text-red-600' : 'text-emerald-600'}">${s.status}</td>
+            <td class="p-2.5 border text-center"><button onclick="viewMarksheet('${s.id}')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">মার্কশীট</button></td>
         </tr>
     `).join('');
 }
 
-function viewMarksheet(studentId) {
-    const students = getStudents();
-    const student = students.find(s => s.id === studentId);
-    const exam = document.getElementById('examName').value || 'অর্ধবার্ষিক পরীক্ষা ২০২৬';
-    const allMarks = getMarks();
-    const m = allMarks[studentId]?.[exam] || { bangla: 0, english: 0, math: 0, science: 0, social: 0 };
-    
-    const total = (Number(m.bangla) || 0) + (Number(m.english) || 0) + (Number(m.math) || 0) + (Number(m.science) || 0) + (Number(m.social) || 0);
+function viewMarksheet(id) {
+    const student = getStudents().find(s => s.id === id);
+    const exam = document.getElementById('examName').value;
+    const m = getMarks()[id]?.[exam] || { bangla: 0, english: 0, math: 0, science: 0, social: 0 };
+    const total = (Number(m.bangla)||0) + (Number(m.english)||0) + (Number(m.math)||0) + (Number(m.science)||0) + (Number(m.social)||0);
     const { gpa, grade } = calculateGPA(total);
 
-    const modal = document.getElementById('markSheetModal');
-    const content = document.getElementById('marksheetContent');
-
-    content.innerHTML = `
-        <div class="text-center border-b pb-3 space-y-1">
-            <h2 class="text-xl font-bold text-blue-900">আদর্শ বিদ্যাপীঠ ও কলেজ</h2>
-            <p class="text-xs text-slate-500">দেবীগঞ্জ, পঞ্চগড়</p>
-            <h3 class="font-bold text-md text-slate-800 pt-2">${exam} - একাডেমিক ট্রান্সক্রিপ্ট</h3>
-        </div>
-        <div class="grid grid-cols-2 text-sm bg-slate-50 p-3 rounded-lg gap-2">
-            <div><strong>নাম:</strong> ${student.name}</div>
-            <div><strong>আইডি:</strong> ${student.id}</div>
-            <div><strong>শ্রেণি:</strong> ${student.class}</div>
-            <div><strong>রোল:</strong> ${student.roll}</div>
-            <div><strong>পিতা:</strong> ${student.fatherName}</div>
-            <div><strong>মোবাইল:</strong> ${student.phone}</div>
-        </div>
-        <table class="w-full text-left border-collapse border border-slate-300 text-sm">
-            <thead>
-                <tr class="bg-slate-800 text-white">
-                    <th class="p-2 border">বিষয়</th>
-                    <th class="p-2 border text-center">পূর্ণমান</th>
-                    <th class="p-2 border text-center">প্রাপ্ত নম্বর</th>
-                    <th class="p-2 border text-center">গ্রেড</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td class="p-2 border">বাংলা</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.bangla}</td><td class="p-2 border text-center">${calculateGPA(m.bangla, 1).grade}</td></tr>
-                <tr><td class="p-2 border">ইংরেজি</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.english}</td><td class="p-2 border text-center">${calculateGPA(m.english, 1).grade}</td></tr>
-                <tr><td class="p-2 border">গণিত</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.math}</td><td class="p-2 border text-center">${calculateGPA(m.math, 1).grade}</td></tr>
-                <tr><td class="p-2 border">বিজ্ঞান</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.science}</td><td class="p-2 border text-center">${calculateGPA(m.science, 1).grade}</td></tr>
-                <tr><td class="p-2 border">সমাজ ও বিশ্বপরিচয়</td><td class="p-2 border text-center">১০০</td><td class="p-2 border text-center">${m.social}</td><td class="p-2 border text-center">${calculateGPA(m.social, 1).grade}</td></tr>
-            </tbody>
+    document.getElementById('markSheetModal').classList.remove('hidden');
+    document.getElementById('marksheetContent').innerHTML = `
+        <div class="text-center border-b pb-3"><h2 class="text-xl font-bold">আদর্শ বিদ্যাপীঠ ও কলেজ</h2><p class="text-xs">${exam}</p></div>
+        <div class="grid grid-cols-2 text-sm bg-slate-50 p-3 rounded"><div><strong>নাম:</strong> ${student.name}</div><div><strong>আইডি:</strong> ${student.id}</div><div><strong>শ্রেণি:</strong> ${student.class}</div><div><strong>রোল:</strong> ${student.roll}</div></div>
+        <table class="w-full text-left border border-slate-300 text-sm mt-2">
+            <tr class="bg-slate-800 text-white"><th class="p-2">বিষয়</th><th class="p-2 text-center">নম্বর</th></tr>
+            <tr><td class="p-2 border">বাংলা</td><td class="p-2 border text-center">${m.bangla}</td></tr>
+            <tr><td class="p-2 border">ইংরেজি</td><td class="p-2 border text-center">${m.english}</td></tr>
+            <tr><td class="p-2 border">গণিত</td><td class="p-2 border text-center">${m.math}</td></tr>
+            <tr><td class="p-2 border">বিজ্ঞান</td><td class="p-2 border text-center">${m.science}</td></tr>
+            <tr><td class="p-2 border">সমাজ</td><td class="p-2 border text-center">${m.social}</td></tr>
         </table>
-        <div class="flex justify-between items-center bg-blue-50 p-3 rounded-lg font-bold">
-            <div>মোট নম্বর: ${total}</div>
-            <div>GPA: ${gpa} (${grade})</div>
-        </div>
+        <div class="flex justify-between font-bold bg-blue-50 p-3 rounded"><div>মোট: ${total}</div><div>GPA: ${gpa} (${grade})</div></div>
     `;
-
-    modal.classList.remove('hidden');
 }
 
-function closeMarksheet() {
-    document.getElementById('markSheetModal').classList.add('hidden');
-}
+function closeMarksheet() { document.getElementById('markSheetModal').classList.add('hidden'); }
 
-// ================= ID & ADMIT CARD GENERATOR =================
+// ================= ROBUST CARD GENERATOR =================
 
 function generateCards() {
     const type = document.getElementById('cardType').value;
-    const className = document.getElementById('cardClass').value;
-    const students = getStudents().filter(s => className === '' || s.class === className);
+    const className = document.getElementById('cardClass').value.trim();
+    
+    // নিখুঁত ম্যাচিং এর জন্য ট্রিম ও কন্ডিশন
+    const students = getStudents().filter(s => {
+        if (!className) return true; // যদি সকল শ্রেণি সিলেক্ট থাকে
+        return s.class && s.class.trim() === className;
+    });
+
     const area = document.getElementById('cardsDisplayArea');
     const container = document.getElementById('printArea');
 
     if (students.length === 0) {
-        alert('কোনো শিক্ষার্থী পাওয়া যায়নি।');
+        alert('নির্বাচিত শ্রেণিতে কোনো শিক্ষার্থী পাওয়া যায়নি! দয়া করে নিশ্চিত করুন ওই শ্রেণিতে শিক্ষার্থী এন্ট্রি করা আছে কি না।');
         area.classList.add('hidden');
         return;
     }
@@ -343,152 +382,130 @@ function generateCards() {
     container.innerHTML = students.map(s => {
         if (type === 'idcard') {
             return `
-                <div class="bg-white border-2 border-blue-900 rounded-xl p-4 shadow-sm w-full max-w-xs mx-auto text-center space-y-2 relative overflow-hidden">
-                    <div class="bg-blue-900 text-white -mx-4 -mt-4 p-2.5">
-                        <h4 class="font-bold text-sm">আদর্শ বিদ্যাপীঠ ও কলেজ</h4>
-                        <p class="text-[10px] text-blue-200">স্টুডেন্ট আইডি কার্ড (২০২৬)</p>
-                    </div>
-                    <div class="w-20 h-20 bg-slate-200 rounded-full mx-auto flex items-center justify-center font-bold text-slate-500 text-xl border-2 border-blue-900 mt-2">
-                        ${s.name.charAt(0)}
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-md text-slate-800">${s.name}</h3>
-                        <p class="text-xs text-slate-500">আইডি: ${s.id}</p>
-                    </div>
-                    <div class="text-xs grid grid-cols-2 text-left bg-slate-50 p-2 rounded">
-                        <div><strong>শ্রেণি:</strong> ${s.class}</div>
-                        <div><strong>রোল:</strong> ${s.roll}</div>
-                        <div><strong>রক্ত:</strong> ${s.bloodGroup || 'N/A'}</div>
-                        <div><strong>মোবাইল:</strong> ${s.phone}</div>
-                    </div>
-                    <div class="pt-2 border-t text-[10px] text-slate-400 flex justify-between">
-                        <span>প্রধান শিক্ষক</span>
-                        <span>কর্তৃপক্ষ</span>
-                    </div>
+                <div class="bg-white border-2 border-blue-900 rounded-xl p-4 shadow-sm max-w-xs mx-auto text-center space-y-2">
+                    <div class="bg-blue-900 text-white -mx-4 -mt-4 p-2.5"><h4 class="font-bold text-sm">আদর্শ বিদ্যাপীঠ ও কলেজ</h4><p class="text-[10px]">স্টুডেন্ট আইডি কার্ড (২০২৬)</p></div>
+                    <div class="w-16 h-16 bg-slate-200 rounded-full mx-auto flex items-center justify-center font-bold text-xl text-slate-500 mt-2">${s.name.charAt(0)}</div>
+                    <div><h3 class="font-bold text-slate-800">${s.name}</h3><p class="text-xs text-slate-500">ID: ${s.id}</p></div>
+                    <div class="text-xs grid grid-cols-2 text-left bg-slate-50 p-2 rounded"><div>শ্রেণি: ${s.class}</div><div>রোল: ${s.roll}</div><div>রক্ত: ${s.bloodGroup||'N/A'}</div><div>মোবাইল: ${s.phone}</div></div>
                 </div>
             `;
         } else {
             return `
-                <div class="bg-white border-2 border-indigo-800 rounded-xl p-4 shadow-sm w-full max-w-sm mx-auto space-y-3">
-                    <div class="text-center border-b pb-2">
-                        <h4 class="font-bold text-md text-indigo-900">আদর্শ বিদ্যাপীঠ ও কলেজ</h4>
-                        <p class="text-xs font-semibold text-slate-600">বার্ষিক পরীক্ষা - ২০২৬ (এডমিট কার্ড)</p>
-                    </div>
-                    <div class="text-xs space-y-1 bg-indigo-50 p-2.5 rounded">
-                        <p><strong>শিক্ষার্থীর নাম:</strong> ${s.name}</p>
-                        <p><strong>আইডি নম্বর:</strong> ${s.id}</p>
-                        <p><strong>শ্রেণি:</strong> ${s.class} | <strong>রোল:</strong> ${s.roll}</p>
-                        <p><strong>পিতার নাম:</strong> ${s.fatherName}</p>
-                    </div>
-                    <div class="text-[11px] text-slate-600">
-                        <p class="font-bold mb-1">পরীক্ষার্থীদের নির্দেশাবলী:</p>
-                        <p>১. পরীক্ষাকেন্দ্রে অবশ্যই আইডি কার্ড সাথে আনতে হবে।</p>
-                        <p>২. পরীক্ষা শুরুর ৩০ মিনিট পূর্বে আসনে বসতে হবে।</p>
-                    </div>
-                    <div class="pt-4 border-t flex justify-between text-[10px] text-slate-500">
-                        <span>পরীক্ষ নিয়ন্ত্রক</span>
-                        <span>প্রধান শিক্ষক</span>
-                    </div>
+                <div class="bg-white border-2 border-indigo-800 rounded-xl p-4 shadow-sm max-w-sm mx-auto space-y-2">
+                    <div class="text-center border-b pb-2"><h4 class="font-bold text-indigo-900">আদর্শ বিদ্যাপীঠ ও কলেজ</h4><p class="text-xs">বার্ষিক পরীক্ষা - এডমিট কার্ড</p></div>
+                    <div class="text-xs space-y-1 bg-indigo-50 p-2 rounded"><p><strong>নাম:</strong> ${s.name}</p><p><strong>আইডি:</strong> ${s.id}</p><p><strong>শ্রেণি:</strong> ${s.class} | <strong>রোল:</strong> ${s.roll}</p><p><strong>পিতা:</strong> ${s.fatherName}</p></div>
                 </div>
             `;
         }
     }).join('');
 }
 
-// ================= EXCEL DOWNLOAD & UPLOAD FIX =================
+// ================= ATTENDANCE MANAGEMENT =================
 
-function downloadSampleExcel() {
-    const sampleData = [
-        {
-            ID: "2026001",
-            Name: "তানভীর আহমেদ",
-            Class: "ষষ্ঠ",
-            Roll: 1,
-            Gender: "ছাত্র",
-            BloodGroup: "O+",
-            FatherName: "মোঃ আব্দুল করিম",
-            MotherName: "রহিমা বেগম",
-            Phone: "01711000000",
-            Address: "দেবীগঞ্জ, পঞ্চগড়"
-        },
-        {
-            ID: "2026002",
-            Name: "সুমাইয়া আক্তার",
-            Class: "ষষ্ঠ",
-            Roll: 2,
-            Gender: "ছাত্রী",
-            BloodGroup: "A+",
-            FatherName: "মোঃ রফিকুল ইসলাম",
-            MotherName: "সালমা খাতুন",
-            Phone: "01811000000",
-            Address: "কালীগঞ্জ বাজার"
-        }
-    ];
+document.getElementById('attendanceDate').valueAsDate = new Date();
 
-    const worksheet = XLSX.utils.json_to_sheet(sampleData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-    XLSX.writeFile(workbook, "Student_Import_Sample.xlsx");
+function loadAttendanceSheet() {
+    const className = document.getElementById('attendanceClass').value;
+    const date = document.getElementById('attendanceDate').value;
+    const container = document.getElementById('attendanceContainer');
+    const tbody = document.getElementById('attendanceTableBody');
+
+    if (!className || !date) { alert('তারিখ এবং শ্রেণি নির্বাচন করুন।'); container.classList.add('hidden'); return; }
+
+    const students = getStudents().filter(s => s.class === className).sort((a,b) => Number(a.roll)-Number(b.roll));
+    const att = getAttendance();
+    const dayAtt = att[date] || {};
+
+    if (students.length === 0) { alert('এই শ্রেণিতে কোনো শিক্ষার্থী নেই।'); container.classList.add('hidden'); return; }
+
+    document.getElementById('attendanceTitle').innerText = `হাজিরা শিট - শ্রেণি: ${className} (${date})`;
+    container.classList.remove('hidden');
+
+    tbody.innerHTML = students.map(s => {
+        const status = dayAtt[s.id] || 'Present';
+        return `
+            <tr>
+                <td class="p-3 font-bold">${s.roll}</td>
+                <td class="p-3">${s.name} <span class="text-xs text-slate-400">ID: ${s.id}</span></td>
+                <td class="p-3 text-center">
+                    <select data-id="${s.id}" class="att-status border rounded px-3 py-1 text-sm font-semibold ${status === 'Present' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}">
+                        <option value="Present" ${status === 'Present' ? 'selected' : ''}>উপস্থিত</option>
+                        <option value="Absent" ${status === 'Absent' ? 'selected' : ''}>অনুপস্থিত</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-function handleExcelUpload() {
-    const fileInput = document.getElementById('excelFileInput');
-    const file = fileInput.files[0];
+function markAllAttendance(isPresent) {
+    document.querySelectorAll('.att-status').forEach(select => {
+        select.value = isPresent ? 'Present' : 'Absent';
+        select.className = `att-status border rounded px-3 py-1 text-sm font-semibold ${isPresent ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`;
+    });
+}
 
-    if (!file) {
-        alert('অনুগ্রহ করে প্রথমে একটি Excel (.xlsx বা .csv) ফাইল নির্বাচন করুন।');
+function saveAttendance() {
+    const date = document.getElementById('attendanceDate').value;
+    const att = getAttendance();
+    if (!att[date]) att[date] = {};
+
+    document.querySelectorAll('.att-status').forEach(select => {
+        const id = select.getAttribute('data-id');
+        att[date][id] = select.value;
+    });
+
+    saveAttendanceData(att);
+    updateDashboardStats();
+    alert('আজকের উপস্থিতি সফলভাবে সংরক্ষিত হয়েছে!');
+}
+
+// ================= GUARDIAN PORTAL =================
+
+function guardianLogin() {
+    const id = document.getElementById('gLoginId').value.trim();
+    const phone = document.getElementById('gLoginPhone').value.trim();
+    const students = getStudents();
+
+    const student = students.find(s => s.id === id && s.phone === phone);
+    if (!student) {
+        alert('সঠিক শিক্ষার্থী আইডি অথবা অভিভাবকের মোবাইল নম্বর দিন!');
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(firstSheet);
+    document.getElementById('gLoginId').value = '';
+    document.getElementById('gLoginPhone').value = '';
+    document.querySelector('#tab-guardian-login .max-w-md').classList.add('hidden');
+    const dashboard = document.getElementById('guardianDashboard');
+    dashboard.classList.remove('hidden');
 
-            if (rows.length === 0) {
-                alert('এক্সেল ফাইলটি খালি বা সঠিক ফরম্যাটে নেই!');
-                return;
-            }
+    document.getElementById('gStudentName').innerText = `${student.name} (${student.class})`;
+    document.getElementById('gStudentDetails').innerText = `আইডি: ${student.id} | রোল: ${student.roll} | পিতা: ${student.fatherName}`;
 
-            const existingStudents = getStudents();
-            let addedCount = 0;
+    const att = getAttendance();
+    let presentDays = 0;
+    Object.values(att).forEach(dayObj => {
+        if (dayObj[id] === 'Present') presentDays++;
+    });
+    document.getElementById('gTotalPresent').innerText = `${presentDays} দিন`;
 
-            rows.forEach(row => {
-                const id = String(row.ID || row.id || row.Id || '').trim();
-                const name = String(row.Name || row.name || row.StudentName || '').trim();
-                
-                if (id && !existingStudents.some(s => s.id === id)) {
-                    existingStudents.push({
-                        id: id,
-                        name: name,
-                        class: String(row.Class || row.class || ''),
-                        roll: row.Roll || row.roll || '',
-                        gender: String(row.Gender || row.gender || 'ছাত্র'),
-                        bloodGroup: String(row.BloodGroup || row.bloodGroup || ''),
-                        fatherName: String(row.FatherName || row.fatherName || ''),
-                        motherName: String(row.MotherName || row.motherName || ''),
-                        phone: String(row.Phone || row.phone || ''),
-                        address: String(row.Address || row.address || '')
-                    });
-                    addedCount++;
-                }
-            });
-
-            saveStudents(existingStudents);
-            fileInput.value = '';
-            alert(`সফলভাবে ${addedCount} জন নতুন শিক্ষার্থীর তথ্য ইম্পোর্ট করা হয়েছে!`);
-            switchTab('student-list');
-        } catch (error) {
-            console.error(error);
-            alert('এক্সেল ফাইল পড়তে সমস্যা হয়েছে। দয়া করে সঠিক ফরম্যাটের ফাইল আপলোড করুন।');
+    const allMarks = getMarks()[id];
+    if (allMarks) {
+        const exams = Object.keys(allMarks);
+        if (exams.length > 0) {
+            const latestExam = exams[exams.length - 1];
+            const m = allMarks[latestExam];
+            const total = (Number(m.bangla)||0) + (Number(m.english)||0) + (Number(m.math)||0) + (Number(m.science)||0) + (Number(m.social)||0);
+            document.getElementById('gLatestGPA').innerText = calculateGPA(total).gpa;
         }
-    };
-    reader.readAsArrayBuffer(file);
+    }
 }
 
-// Initial Call
+function logoutGuardian() {
+    document.getElementById('guardianDashboard').classList.add('hidden');
+    document.querySelector('#tab-guardian-login .max-w-md').classList.remove('hidden');
+}
+
+// Initial Load
 updateDashboardStats();
 renderStudentTable();
