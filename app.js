@@ -389,3 +389,37 @@ function generateCards() {
 // Initial Call
 updateDashboardStats();
 renderStudentTable();
+// Download Sample Excel Template
+function downloadSampleExcel() {
+    const sampleData = [
+        {
+            ID: "2026001",
+            Name: "তানভীর আহমেদ",
+            Class: "ষষ্ঠ",
+            Roll: 1,
+            Gender: "ছাত্র",
+            BloodGroup: "O+",
+            FatherName: "মোঃ আব্দুল করিম",
+            MotherName: "রহিমা বেগম",
+            Phone: "01711000000",
+            Address: "দেবীগঞ্জ, পঞ্চগড়"
+        },
+        {
+            ID: "2026002",
+            Name: "সুমাইয়া আক্তার",
+            Class: "ষষ্ঠ",
+            Roll: 2,
+            Gender: "ছাত্রী",
+            BloodGroup: "A+",
+            FatherName: "মোঃ রফিকুল ইসলাম",
+            MotherName: "সালমা খাতুন",
+            Phone: "01811000000",
+            Address: "কালীগঞ্জ বাজার"
+        }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+    XLSX.writeFile(workbook, "Student_Import_Sample.xlsx");
+}
